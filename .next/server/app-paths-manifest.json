@@ -1,0 +1,4 @@
+{
+  "/(screens)/home/page": "app/(screens)/home/page.js",
+  "/(screens)/balance-sheet/page": "app/(screens)/balance-sheet/page.js"
+}
