@@ -2,6 +2,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import {
   MenuIcon,
   SettingsIcon,
@@ -26,8 +27,14 @@ export function AppHeader({
   extraCode,
   showActionBar,
 }: AppHeaderProps) {
+  const router = useRouter()
   const [selectedSubSubmenu, setSelectedSubSubmenu] = useState(1)
   const [tutorialOpen, setTutorialOpen] = useState(false)
+
+  const handleOpenTutorial = () => {
+    router.push("/home")
+    setTutorialOpen(true)
+  }
 
   return (
     <div className="flex flex-col bg-[#e8eef7] font-sans">
@@ -75,7 +82,7 @@ export function AppHeader({
         </button>
         <button
           type="button"
-          onClick={() => setTutorialOpen(true)}
+          onClick={handleOpenTutorial}
           className="flex items-center gap-2 text-sm text-[#1f3b61] border border-[#9fb2cc] bg-white hover:bg-[#eef4ff] px-3 py-1 rounded-[4px]"
         >
           チュートリアル
