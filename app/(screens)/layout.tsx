@@ -1,6 +1,7 @@
 // app/(screens)/layout.tsx
 "use client"
 
+import { usePathname } from "next/navigation"
 import { AppHeader } from "@/components/common/AppHeader"
 import { SideMenu } from "@/components/menu/SideMenu"
 
@@ -9,6 +10,9 @@ export default function ScreensLayout({
 }: {
   children: React.ReactNode
 }) {
+  const pathname = usePathname()
+  const isHomeMap = pathname === "/home"
+
   return (
     <div
       className={
@@ -28,23 +32,24 @@ export default function ScreensLayout({
 
       {/* メイン領域：サイドメニュー + ワークスペース */}
       <div className="flex min-h-0 flex-1">
-        {/* 左メニュー */}
-        <aside
-          className={
-            // サイドメニューの背景や枠線や文字色は
-            // global.cssで .side-menu-root が定義済み
-            "side-menu-root flex w-[260px] flex-col min-h-0 flex-shrink-0"
-          }
-        >
-          <SideMenu />
-        </aside>
+        {!isHomeMap && (
+          <aside
+            className={
+              // サイドメニューの背景や枠線や文字色は
+              // global.cssで .side-menu-root が定義済み
+              "side-menu-root flex w-[260px] flex-col min-h-0 flex-shrink-0"
+            }
+          >
+            <SideMenu />
+          </aside>
+        )}
 
         {/* 右側の業務エリア */}
         <main
           className={
             // スクロールする作業エリア
             // 背景/文字色も workspace-root と同じトーンで合わせる
-            "flex-1 min-w-0 overflow-auto p-4 workspace-root"
+            isHomeMap ? "flex-1 min-w-0 overflow-auto workspace-root" : "flex-1 min-w-0 overflow-auto p-4 workspace-root"
           }
         >
           {children}
