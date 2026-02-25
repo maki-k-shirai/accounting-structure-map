@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 
 type NodeId =
   | "voucher"
@@ -49,6 +50,23 @@ type SelectedTarget = {
 const NODE_W = 180
 const NODE_H = 76
 const INVENTORY_IMAGE_SRC = "/pdf/property%20inventory.png"
+
+type InventoryHighlightRect = {
+  left: number
+  top: number
+  width: number
+  height: number
+}
+
+const BASIC_ASSET_HIGHLIGHTS: InventoryHighlightRect[] = [
+  { left: 45, top: 36.2, width: 9, height: 3 },
+  { left: 45, top: 44.7, width: 9, height: 3 },
+]
+
+const PUBLIC_PURPOSE_HOLDING_HIGHLIGHTS: InventoryHighlightRect[] = [
+  { left: 61, top: 36.2, width: 18, height: 3 },
+  { left: 61, top: 44.7, width: 18, height: 3 },
+]
 
 const LAYERS: LayerData[] = [
   {
@@ -625,12 +643,59 @@ function DetailPanel({
   }, [node, edges, nodes])
 
   const [activeBsBox, setActiveBsBox] = useState<"assets" | "liabilities" | "netAssets" | null>(null)
+  const [isBasicAssetModalOpen, setIsBasicAssetModalOpen] = useState(false)
+  const [isPublicPurposeHoldingModalOpen, setIsPublicPurposeHoldingModalOpen] = useState(false)
+  const [inventoryHighlights, setInventoryHighlights] = useState<InventoryHighlightRect[]>(BASIC_ASSET_HIGHLIGHTS)
+  const [publicPurposeHoldingHighlights, setPublicPurposeHoldingHighlights] = useState<InventoryHighlightRect[]>(
+    PUBLIC_PURPOSE_HOLDING_HIGHLIGHTS
+  )
+  const [isHighlightEditorOpen, setIsHighlightEditorOpen] = useState(false)
+  const [isCopied, setIsCopied] = useState(false)
 
   useEffect(() => {
     if (node?.id !== "bs") {
       setActiveBsBox(null)
     }
   }, [node])
+
+  useEffect(() => {
+    if (node?.id !== "inventory") {
+      setIsBasicAssetModalOpen(false)
+      setIsPublicPurposeHoldingModalOpen(false)
+      setIsHighlightEditorOpen(false)
+      setIsCopied(false)
+    }
+  }, [node])
+
+  function updateInventoryHighlight(index: number, key: keyof InventoryHighlightRect, rawValue: string) {
+    const value = Number.parseFloat(rawValue)
+    if (Number.isNaN(value)) return
+    setInventoryHighlights((prev) => prev.map((rect, i) => (i === index ? { ...rect, [key]: value } : rect)))
+  }
+
+  function updatePublicPurposeHoldingHighlight(index: number, key: keyof InventoryHighlightRect, rawValue: string) {
+    const value = Number.parseFloat(rawValue)
+    if (Number.isNaN(value)) return
+    setPublicPurposeHoldingHighlights((prev) => prev.map((rect, i) => (i === index ? { ...rect, [key]: value } : rect)))
+  }
+
+  async function copyHighlightSettings() {
+    const payload = JSON.stringify(
+      {
+        basicAssetHighlights: inventoryHighlights,
+        publicPurposeHoldingHighlights,
+      },
+      null,
+      2
+    )
+    try {
+      await navigator.clipboard.writeText(payload)
+      setIsCopied(true)
+      setTimeout(() => setIsCopied(false), 1200)
+    } catch {
+      setIsCopied(false)
+    }
+  }
 
   return (
     <div className="h-full overflow-auto rounded-t-2xl border border-[#a9c0dd] bg-white p-4 shadow-2xl">
@@ -674,14 +739,209 @@ function DetailPanel({
 
           {node.id === "inventory" && (
             <div className="mt-3 rounded-md border border-[#d2deec] bg-[#f8fbff] p-3">
-              <div className="text-[11px] font-semibold text-[#335a88]">帳票イメージ</div>
-              <div className="mt-2 overflow-hidden rounded border border-[#d7e1ee] bg-white">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-[11px] font-semibold text-[#335a88]">帳票イメージ</div>
+                <button
+                  type="button"
+                  onClick={() => setIsHighlightEditorOpen((prev) => !prev)}
+                  className="rounded border border-[#b8cbe0] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#3e5f84] hover:bg-[#f3f8fd]"
+                >
+                  {isHighlightEditorOpen ? "編集を閉じる" : "ハイライト編集"}
+                </button>
+              </div>
+              <div className="relative mt-2 overflow-hidden rounded border border-[#d7e1ee] bg-white">
                 <object data={INVENTORY_IMAGE_SRC} type="image/png" className="h-auto w-full">
                   <div className="p-3 text-[12px] text-[#5f7693]">
                     画像が見つかりません。`public/pdf/inventory-format.png` にPNGを配置してください。
                   </div>
                 </object>
+                {inventoryHighlights.map((rect, index) => (
+                  <button
+                    key={`basic-asset-highlight-${index}`}
+                    type="button"
+                    aria-label="基本財産の解説を表示"
+                    onClick={() => setIsBasicAssetModalOpen(true)}
+                    className="absolute cursor-pointer rounded-[6px] border-2 border-[#d89d00] bg-transparent shadow-[0_0_0_2px_rgba(255,214,102,0.35),0_0_12px_rgba(216,157,0,0.25)] transition hover:shadow-[0_0_0_3px_rgba(255,214,102,0.45),0_0_16px_rgba(216,157,0,0.35)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#d89d00]"
+                    style={{
+                      left: `${rect.left}%`,
+                      top: `${rect.top}%`,
+                      width: `${rect.width}%`,
+                      height: `${rect.height}%`,
+                    }}
+                  />
+                ))}
+                {publicPurposeHoldingHighlights.map((rect, index) => (
+                  <button
+                    key={`public-purpose-holding-highlight-${index}`}
+                    type="button"
+                    aria-label="公益目的保有財産の解説を表示"
+                    onClick={() => setIsPublicPurposeHoldingModalOpen(true)}
+                    className="absolute cursor-pointer rounded-[6px] border-2 border-[#2f8a66] bg-transparent shadow-[0_0_0_2px_rgba(135,226,188,0.28),0_0_12px_rgba(47,138,102,0.22)] transition hover:shadow-[0_0_0_3px_rgba(135,226,188,0.38),0_0_16px_rgba(47,138,102,0.3)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2f8a66]"
+                    style={{
+                      left: `${rect.left}%`,
+                      top: `${rect.top}%`,
+                      width: `${rect.width}%`,
+                      height: `${rect.height}%`,
+                    }}
+                  />
+                ))}
               </div>
+              {isHighlightEditorOpen && (
+                <div className="mt-2 rounded border border-[#d6e2f2] bg-white p-3 text-[11px] text-[#3f5978]">
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="font-semibold text-[#335a88]">基本財産ハイライト座標（%）</div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInventoryHighlights(BASIC_ASSET_HIGHLIGHTS)
+                          setPublicPurposeHoldingHighlights(PUBLIC_PURPOSE_HOLDING_HIGHLIGHTS)
+                        }}
+                        className="rounded border border-[#c7d8ec] bg-white px-2 py-1 text-[11px] hover:bg-[#f8fbff]"
+                      >
+                        リセット
+                      </button>
+                      <button
+                        type="button"
+                        onClick={copyHighlightSettings}
+                        className="rounded border border-[#b8cbe0] bg-[#f6fbff] px-2 py-1 text-[11px] font-semibold text-[#3e5f84] hover:bg-[#edf6ff]"
+                      >
+                        {isCopied ? "コピー済み" : "JSONをコピー"}
+                      </button>
+                    </div>
+                  </div>
+                  {inventoryHighlights.map((rect, index) => (
+                    <div key={`editor-row-${index}`} className="mb-2 grid grid-cols-4 gap-2 last:mb-0">
+                      <label className="flex flex-col gap-1">
+                        <span>left</span>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={rect.left}
+                          onChange={(event) => updateInventoryHighlight(index, "left", event.target.value)}
+                          className="rounded border border-[#ccd8e8] px-2 py-1"
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1">
+                        <span>top</span>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={rect.top}
+                          onChange={(event) => updateInventoryHighlight(index, "top", event.target.value)}
+                          className="rounded border border-[#ccd8e8] px-2 py-1"
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1">
+                        <span>width</span>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={rect.width}
+                          onChange={(event) => updateInventoryHighlight(index, "width", event.target.value)}
+                          className="rounded border border-[#ccd8e8] px-2 py-1"
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1">
+                        <span>height</span>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={rect.height}
+                          onChange={(event) => updateInventoryHighlight(index, "height", event.target.value)}
+                          className="rounded border border-[#ccd8e8] px-2 py-1"
+                        />
+                      </label>
+                    </div>
+                  ))}
+                  <div className="mb-2 mt-3 font-semibold text-[#2a6a53]">公益目的保有財産ハイライト座標（%）</div>
+                  {publicPurposeHoldingHighlights.map((rect, index) => (
+                    <div key={`public-editor-row-${index}`} className="mb-2 grid grid-cols-4 gap-2 last:mb-0">
+                      <label className="flex flex-col gap-1">
+                        <span>left</span>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={rect.left}
+                          onChange={(event) => updatePublicPurposeHoldingHighlight(index, "left", event.target.value)}
+                          className="rounded border border-[#ccd8e8] px-2 py-1"
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1">
+                        <span>top</span>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={rect.top}
+                          onChange={(event) => updatePublicPurposeHoldingHighlight(index, "top", event.target.value)}
+                          className="rounded border border-[#ccd8e8] px-2 py-1"
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1">
+                        <span>width</span>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={rect.width}
+                          onChange={(event) => updatePublicPurposeHoldingHighlight(index, "width", event.target.value)}
+                          className="rounded border border-[#ccd8e8] px-2 py-1"
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1">
+                        <span>height</span>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={rect.height}
+                          onChange={(event) => updatePublicPurposeHoldingHighlight(index, "height", event.target.value)}
+                          className="rounded border border-[#ccd8e8] px-2 py-1"
+                        />
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <Dialog open={isBasicAssetModalOpen} onOpenChange={setIsBasicAssetModalOpen}>
+                <DialogContent titleText="基本財産の解説" className="w-[min(560px,94vw)] p-0">
+                  <div className="border-b border-[#dbe5f1] bg-[#f6fbff] px-5 py-3 text-[16px] font-bold text-[#1f3f66]">
+                    基本財産
+                  </div>
+                  <div className="px-5 py-4 text-[14px] leading-7 text-[#2f425a]">
+                    <p>法人の基盤となる財産。原則として元本は維持され、</p>
+                    <p>運用収益を公益目的事業などに活用する。</p>
+                  </div>
+                  <div className="flex justify-end border-t border-[#dbe5f1] bg-[#fbfdff] px-5 py-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsBasicAssetModalOpen(false)}
+                      className="rounded border border-[#b8cbe0] bg-white px-4 py-1.5 text-[13px] font-semibold text-[#3e5f84] hover:bg-[#f3f8fd]"
+                    >
+                      閉じる
+                    </button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              <Dialog open={isPublicPurposeHoldingModalOpen} onOpenChange={setIsPublicPurposeHoldingModalOpen}>
+                <DialogContent titleText="公益目的保有財産の解説" className="w-[min(560px,94vw)] p-0">
+                  <div className="border-b border-[#d6ece3] bg-[#f3fbf7] px-5 py-3 text-[16px] font-bold text-[#1f5f49]">
+                    公益目的保有財産
+                  </div>
+                  <div className="px-5 py-4 text-[14px] leading-7 text-[#2f425a]">
+                    <p>公益目的事業に直接使用する、またはその実施のために保有する財産。</p>
+                  </div>
+                  <div className="flex justify-end border-t border-[#d6ece3] bg-[#fbfffd] px-5 py-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsPublicPurposeHoldingModalOpen(false)}
+                      className="rounded border border-[#b9dbc9] bg-white px-4 py-1.5 text-[13px] font-semibold text-[#2a6a53] hover:bg-[#f2fbf6]"
+                    >
+                      閉じる
+                    </button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           )}
 
