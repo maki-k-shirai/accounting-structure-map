@@ -848,7 +848,7 @@ function DetailPanel({
 function StructureMap() {
   const [hoveredId, setHoveredId] = useState<NodeId | null>(null)
   const [selectedTarget, setSelectedTarget] = useState<SelectedTarget | null>(null)
-  const [allRelationsVisible, setAllRelationsVisible] = useState(true)
+  const [allRelationsVisible, setAllRelationsVisible] = useState(false)
   const [relationFocusNodeId, setRelationFocusNodeId] = useState<NodeId | null>(null)
 
   const isRelationNode = (id: string) =>
