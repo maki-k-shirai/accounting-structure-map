@@ -22,6 +22,14 @@ type NodeData = {
   y: number
 }
 
+type LayerData = {
+  id: "input" | "summary" | "report"
+  title: string
+  subtitle: string
+  y: number
+  h: number
+}
+
 type EdgeData = {
   id: string
   from: NodeId
@@ -40,50 +48,83 @@ type SelectedTarget = {
 
 const NODE_W = 180
 const NODE_H = 76
+const INVENTORY_IMAGE_SRC = "/pdf/property%20inventory.png"
+
+const LAYERS: LayerData[] = [
+  {
+    id: "input",
+    title: "① 記録・入力層",
+    subtitle: "伝票 / 日計表 / 現預金出納帳 / 仕訳帳",
+    y: 24,
+    h: 208,
+  },
+  {
+    id: "summary",
+    title: "② 集計・確認層",
+    subtitle: "総勘定元帳 / 試算表",
+    y: 252,
+    h: 208,
+  },
+  {
+    id: "report",
+    title: "③ 決算・表示層",
+    subtitle: "貸借対照表 / 活動計算書 / 財産目録 / 注記",
+    y: 480,
+    h: 208,
+  },
+]
 
 const RELATION_STYLE: Record<
   EdgeData["label"],
-  { badgeBg: string; badgeBorder: string; badgeText: string }
+  { badgeBg: string; badgeBorder: string; badgeText: string; line: string }
 > = {
   記録: {
     badgeBg: "#edf3ff",
     badgeBorder: "#bdd0f7",
     badgeText: "#234f9a",
+    line: "#234f9a",
   },
   ログ: {
     badgeBg: "#f4eeff",
     badgeBorder: "#d2c2ef",
     badgeText: "#5a3d8b",
+    line: "#5a3d8b",
   },
   日次集計: {
     badgeBg: "#ecfaef",
     badgeBorder: "#b8ddc0",
     badgeText: "#2f6d3f",
+    line: "#2f6d3f",
   },
   期間集計: {
     badgeBg: "#e9f8f9",
     badgeBorder: "#b9dde0",
     badgeText: "#216770",
+    line: "#216770",
   },
   抽出: {
     badgeBg: "#fff6ea",
     badgeBorder: "#efd0ad",
     badgeText: "#925d22",
+    line: "#925d22",
   },
   確定: {
     badgeBg: "#ffefef",
     badgeBorder: "#efc1c1",
     badgeText: "#8f3232",
+    line: "#8f3232",
   },
   詳細化: {
     badgeBg: "#fff3e8",
     badgeBorder: "#efceb2",
     badgeText: "#8a4f1d",
+    line: "#8a4f1d",
   },
   補足: {
     badgeBg: "#f2f4f7",
     badgeBorder: "#d2d8df",
     badgeText: "#4f5b6a",
+    line: "#4f5b6a",
   },
 }
 
@@ -92,71 +133,71 @@ const NODES: NodeData[] = [
     id: "voucher",
     label: "伝票",
     role: "すべての会計データの出発点",
-    x: 280,
-    y: 300,
+    x: 420,
+    y: 108,
   },
   {
     id: "ledger",
     label: "総勘定元帳",
     role: "伝票を科目別に記録した累積帳票",
-    x: 530,
-    y: 300,
+    x: 520,
+    y: 318,
   },
   {
     id: "trial",
     label: "試算表",
     role: "全科目を集計し整合性を確認する中間帳票",
-    x: 780,
-    y: 300,
+    x: 820,
+    y: 318,
   },
   {
     id: "bs",
     label: "貸借対照表",
     role: "期末時点の財政状態を示す帳票",
-    x: 1030,
-    y: 240,
+    x: 620,
+    y: 548,
   },
   {
     id: "pl",
     label: "活動計算書",
     role: "一期間の活動結果を示す帳票",
-    x: 1030,
-    y: 380,
+    x: 860,
+    y: 548,
   },
   {
     id: "inventory",
     label: "財産目録",
     role: "貸借対照表の残高内訳を具体化する帳票",
-    x: 1030,
-    y: 110,
+    x: 380,
+    y: 548,
   },
   {
     id: "notes",
     label: "注記",
     role: "貸借対照表・活動計算書の背景を補足する帳票",
-    x: 1280,
-    y: 310,
+    x: 1100,
+    y: 548,
   },
   {
     id: "cashbook",
     label: "現預金出納帳",
     role: "現金・預金取引を抽出して資金の動きを確認する帳票",
-    x: 280,
-    y: 470,
+    x: 980,
+    y: 108,
   },
   {
     id: "daily-sheet",
     label: "日計表",
     role: "1日の取引を集計して入力漏れや異常を確認する日次帳票",
-    x: 280,
-    y: 130,
+    x: 700,
+    y: 108,
   },
   {
     id: "journal",
     label: "仕訳帳",
     role: "すべての仕訳を時系列で確認する監査ログ",
-    x: 40,
-    y: 300,
+    x: 140,
+    y: 108,
   },
 ]
 
@@ -186,20 +227,10 @@ const EDGES: EdgeData[] = [
     from: "trial",
     to: "bs",
     label: "確定",
-    why: "期末時点の残高を“公式な姿”として固定する。",
+    why: "試算表で整合した数値を、決算書（貸借対照表・活動計算書）として確定する。",
     checkpoint: "決算整理後の期末残高が確定しているか",
     fromLabel: "試算表",
-    toLabel: "貸借対照表",
-  },
-  {
-    id: "trial-pl",
-    from: "trial",
-    to: "pl",
-    label: "確定",
-    why: "一定期間の増減を“公式な結果”として固定する。",
-    checkpoint: "対象期間の増減が確定しているか",
-    fromLabel: "試算表",
-    toLabel: "活動計算書",
+    toLabel: "決算書（貸借対照表・活動計算書）",
   },
   {
     id: "bs-inventory",
@@ -216,19 +247,9 @@ const EDGES: EdgeData[] = [
     from: "bs",
     to: "notes",
     label: "補足",
-    why: "貸借対照表の数値の背景情報を説明するため。",
+    why: "貸借対照表・活動計算書をまとめた決算書群の背景情報を説明するため。",
     checkpoint: "主要な残高に必要な説明が付されているか。",
-    fromLabel: "貸借対照表",
-    toLabel: "注記",
-  },
-  {
-    id: "pl-notes",
-    from: "pl",
-    to: "notes",
-    label: "補足",
-    why: "活動計算書の数値の背景情報を説明するため。",
-    checkpoint: "重要な増減要因が説明されているか。",
-    fromLabel: "活動計算書",
+    fromLabel: "決算書（貸借対照表・活動計算書）",
     toLabel: "注記",
   },
   {
@@ -263,16 +284,22 @@ const EDGES: EdgeData[] = [
   },
 ]
 
+const STATEMENT_GROUP_FRAME = (() => {
+  const bs = NODES.find((node) => node.id === "bs")
+  const pl = NODES.find((node) => node.id === "pl")
+  if (!bs || !pl) return null
+
+  const pad = 22
+  const left = Math.min(bs.x, pl.x) - pad
+  const top = Math.min(bs.y, pl.y) - pad
+  const right = Math.max(bs.x, pl.x) + NODE_W + pad
+  const bottom = Math.max(bs.y, pl.y) + NODE_H + pad
+
+  return { x: left, y: top, w: right - left, h: bottom - top }
+})()
+
 function centerY(node: NodeData) {
   return node.y + NODE_H / 2
-}
-
-function rightX(node: NodeData) {
-  return node.x + NODE_W
-}
-
-function leftX(node: NodeData) {
-  return node.x
 }
 
 function centerX(node: NodeData) {
@@ -319,82 +346,77 @@ function edgeIsHighlighted(edge: EdgeData, related: Set<NodeId> | null) {
 }
 
 function edgePoints(edge: EdgeData, from: NodeData, to: NodeData) {
-  if (edge.id === "voucher-daily-sheet" || edge.id === "voucher-cashbook") {
-    const x = centerX(from)
-    const startY = to.y < from.y ? from.y : from.y + NODE_H
-    const endY = to.y < from.y ? to.y + NODE_H : to.y
-    return `${x},${startY} ${x},${endY}`
-  }
-
-  if (edge.id === "voucher-journal") {
-    const y = centerY(from)
-    return `${from.x},${y} ${to.x + NODE_W},${y}`
-  }
-
-  if (edge.id === "bs-inventory") {
-    const x = centerX(from)
+  if (edge.id === "voucher-cashbook") {
+    const startX = centerX(from)
     const startY = from.y
+    const endX = centerX(to)
+    const endY = to.y
+    const detourY = Math.min(startY, endY) - 34
+    return `${startX},${startY} ${startX},${detourY} ${endX},${detourY} ${endX},${endY}`
+  }
+
+  if (edge.id === "trial-bs" && STATEMENT_GROUP_FRAME) {
+    const startX = centerX(from)
+    const startY = from.y + NODE_H
+    const endX = STATEMENT_GROUP_FRAME.x + STATEMENT_GROUP_FRAME.w / 2
+    const endY = STATEMENT_GROUP_FRAME.y
+    const midY = (startY + endY) / 2
+    return `${startX},${startY} ${startX},${midY} ${endX},${midY} ${endX},${endY}`
+  }
+
+  if (edge.id === "bs-notes" && STATEMENT_GROUP_FRAME) {
+    const startX = STATEMENT_GROUP_FRAME.x + STATEMENT_GROUP_FRAME.w / 2
+    const startY = STATEMENT_GROUP_FRAME.y + STATEMENT_GROUP_FRAME.h
+    const endX = centerX(to)
     const endY = to.y + NODE_H
-    return `${x},${startY} ${x},${endY}`
+    const detourY = Math.max(startY, endY) + 36
+    return `${startX},${startY} ${startX},${detourY} ${endX},${detourY} ${endX},${endY}`
   }
 
-  const startX = rightX(from)
+  const startX = centerX(from)
   const startY = centerY(from)
-  const endX = leftX(to)
+  const endX = centerX(to)
   const endY = centerY(to)
-
-  if (startY === endY) {
-    return `${startX},${startY} ${endX},${endY}`
-  }
-
-  const branchX = startX + 70
-  return `${startX},${startY} ${branchX},${startY} ${branchX},${endY} ${endX},${endY}`
+  return `${startX},${startY} ${endX},${endY}`
 }
 
 function edgeLabelPosition(edge: EdgeData, from: NodeData, to: NodeData) {
-  if (edge.id === "voucher-daily-sheet" || edge.id === "voucher-cashbook") {
-    const x = centerX(from)
-    const startY = to.y < from.y ? from.y : from.y + NODE_H
-    const endY = to.y < from.y ? to.y + NODE_H : to.y
-    return {
-      x: x + 44,
-      y: (startY + endY) / 2,
-    }
-  }
-
-  if (edge.id === "voucher-journal") {
-    return {
-      x: (from.x + (to.x + NODE_W)) / 2,
-      y: centerY(from) - 18,
-    }
-  }
-
-  if (edge.id === "bs-inventory") {
-    const x = centerX(from)
-    const startY = from.y
-    const endY = to.y + NODE_H
-    return {
-      x: x + 46,
-      y: (startY + endY) / 2,
-    }
-  }
-
-  const startX = rightX(from)
-  const startY = centerY(from)
-  const endX = leftX(to)
-  const endY = centerY(to)
-
-  if (startY === endY) {
+  if (edge.id === "voucher-cashbook") {
+    const startX = centerX(from)
+    const endX = centerX(to)
+    const detourY = Math.min(from.y, to.y) - 34
     return {
       x: (startX + endX) / 2,
-      y: startY,
+      y: detourY - 10,
     }
   }
 
-  const branchX = startX + 70
+  if (edge.id === "trial-bs" && STATEMENT_GROUP_FRAME) {
+    const startX = centerX(from)
+    const endX = STATEMENT_GROUP_FRAME.x + STATEMENT_GROUP_FRAME.w / 2
+    const startY = from.y + NODE_H
+    const endY = STATEMENT_GROUP_FRAME.y
+    return {
+      x: (startX + endX) / 2,
+      y: (startY + endY) / 2 - 12,
+    }
+  }
+
+  if (edge.id === "bs-notes" && STATEMENT_GROUP_FRAME) {
+    const startX = STATEMENT_GROUP_FRAME.x + STATEMENT_GROUP_FRAME.w / 2
+    const endX = centerX(to)
+    const startY = STATEMENT_GROUP_FRAME.y + STATEMENT_GROUP_FRAME.h
+    const endY = to.y + NODE_H
+    const detourY = Math.max(startY, endY) + 36
+    return {
+      x: (startX + endX) / 2,
+      y: detourY - 12,
+    }
+  }
+
   return {
-    x: (startX + branchX) / 2,
-    y: startY,
+    x: (centerX(from) + centerX(to)) / 2,
+    y: (centerY(from) + centerY(to)) / 2 - 14,
   }
 }
 
@@ -415,13 +437,10 @@ function Node({
   onClick: (id: NodeId) => void
   onOpenDetail: (id: NodeId) => void
 }) {
-  const isDailySheet = node.id === "daily-sheet"
-  const isCashbook = node.id === "cashbook"
-  const isJournal = node.id === "journal"
-  const isSubNode = isDailySheet || isCashbook || isJournal
+  const isReferenceRelated = node.id === "cashbook" || node.id === "daily-sheet" || node.id === "journal" || node.id === "inventory"
+  const isSupplementRelated = node.id === "notes"
+  const isRelated = isReferenceRelated || isSupplementRelated
   const nodeTone = "border-[#b6cbe3] bg-white"
-  const nodeWidth = isSubNode ? 160 : NODE_W
-  const nodeHeight = isSubNode ? 66 : NODE_H
 
   return (
     <div
@@ -436,32 +455,53 @@ function Node({
           onClick(node.id)
         }
       }}
-      className={`absolute rounded-lg border bg-white px-3 py-2 text-left shadow-sm transition ${
+      className={`absolute text-left transition ${
         isDimmed ? "opacity-25" : "opacity-100"
-      } ${isSelected ? "border-[#2d5e9a] ring-2 ring-[#a8c3e2]" : nodeTone} ${isSubNode ? "hover:-translate-y-0.5 hover:shadow-md" : ""}`}
-      style={{ left: `${node.x}px`, top: `${node.y}px`, width: `${nodeWidth}px`, height: `${nodeHeight}px` }}
+      } ${
+        isRelated
+          ? "cursor-pointer hover:opacity-90"
+          : `${isSelected ? "border-[#2d5e9a] ring-2 ring-[#a8c3e2]" : nodeTone} rounded-lg border bg-white px-3 py-2 shadow-sm hover:-translate-y-0.5 hover:shadow-md`
+      }`}
+      style={{ left: `${node.x}px`, top: `${node.y}px`, width: `${NODE_W}px`, height: `${NODE_H}px` }}
     >
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation()
-          onOpenDetail(node.id)
-        }}
-        className="absolute right-1.5 top-1.5 rounded border border-[#d4dfec] bg-white px-1.5 py-0.5 text-[9px] text-[#4f6784]"
-      >
-        詳細
-      </button>
-      {(isDailySheet || isCashbook || isJournal) && (
-        <div className="mb-1">
-          <span
-            className="rounded-full border border-[#cbd7e7] bg-[#f6f9fd] px-1.5 py-0.5 text-[9px] font-semibold text-[#516985]"
-          >
-            {isDailySheet ? "日次" : isCashbook ? "抽出" : "ログ"}
-          </span>
-        </div>
+      {!isRelated && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            onOpenDetail(node.id)
+          }}
+          className="absolute right-1.5 top-1.5 rounded border border-[#d4dfec] bg-white px-1.5 py-0.5 text-[9px] text-[#4f6784]"
+        >
+          詳細
+        </button>
       )}
-      <div className={`${isSubNode ? "text-[14px]" : "text-[15px]"} font-bold text-[#1f3f66]`}>{node.label}</div>
-      <div className={`${isSubNode ? "text-[10px]" : "text-[11px]"} mt-1 text-[#5f7693]`}>{node.role}</div>
+      {isReferenceRelated ? (
+        <div className="flex h-full items-center justify-center">
+          <div
+            className={`flex h-9 min-w-[138px] max-w-[154px] items-center justify-center rounded-full border bg-[#f3f5f7] px-4 text-[13px] font-semibold text-[#465869] ${
+              isSelected ? "border-[#9db2c7]" : "border-[#d3d8df]"
+            }`}
+          >
+            {node.label}
+          </div>
+        </div>
+      ) : isSupplementRelated ? (
+        <div className="flex h-full items-center justify-center">
+          <div
+            className={`relative flex h-[52px] w-[154px] items-center justify-center border bg-[#f7f8fa] text-[13px] font-semibold text-[#465869] [clip-path:polygon(0_0,calc(100%-14px)_0,100%_14px,100%_100%,0_100%)] ${
+              isSelected ? "border-[#9db2c7]" : "border-[#d3d8df]"
+            }`}
+          >
+            {node.label}
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="text-[15px] font-bold text-[#1f3f66]">{node.label}</div>
+          <div className="mt-1 text-[11px] text-[#5f7693]">{node.role}</div>
+        </>
+      )}
     </div>
   )
 }
@@ -508,7 +548,7 @@ function Edge({
       <polyline
         points={points}
         fill="none"
-        stroke="#2d5e9a"
+        stroke={style.line}
         strokeWidth={strokeWidth}
         opacity={lineOpacity}
         strokeLinejoin="round"
@@ -560,10 +600,20 @@ function DetailPanel({
 }) {
   const incoming = useMemo(() => {
     if (!node) return []
-    return edges
+    const baseIncoming = edges
       .filter((e) => e.to === node.id)
       .map((e) => nodes.find((n) => n.id === e.from)?.label)
       .filter((v): v is string => !!v)
+
+    if (node.id === "pl" && !baseIncoming.includes("試算表")) {
+      baseIncoming.push("試算表")
+    }
+
+    if (node.id === "notes" && !baseIncoming.includes("活動計算書")) {
+      baseIncoming.push("活動計算書")
+    }
+
+    return baseIncoming
   }, [node, edges, nodes])
 
   const outgoing = useMemo(() => {
@@ -621,6 +671,19 @@ function DetailPanel({
             <div className="text-[11px] font-semibold text-[#335a88]">出力先</div>
             <div className="mt-1 text-[12px] text-[#4f6784]">{outgoing.length > 0 ? outgoing.join(" / ") : "なし"}</div>
           </div>
+
+          {node.id === "inventory" && (
+            <div className="mt-3 rounded-md border border-[#d2deec] bg-[#f8fbff] p-3">
+              <div className="text-[11px] font-semibold text-[#335a88]">帳票イメージ</div>
+              <div className="mt-2 overflow-hidden rounded border border-[#d7e1ee] bg-white">
+                <object data={INVENTORY_IMAGE_SRC} type="image/png" className="h-auto w-full">
+                  <div className="p-3 text-[12px] text-[#5f7693]">
+                    画像が見つかりません。`public/pdf/inventory-format.png` にPNGを配置してください。
+                  </div>
+                </object>
+              </div>
+            </div>
+          )}
 
           {node.id === "bs" && (
             <div className="mt-4 rounded-md border border-[#d2deec] bg-[#f8fbff] p-3">
@@ -785,7 +848,7 @@ function DetailPanel({
 function StructureMap() {
   const [hoveredId, setHoveredId] = useState<NodeId | null>(null)
   const [selectedTarget, setSelectedTarget] = useState<SelectedTarget | null>(null)
-  const [allRelationsVisible, setAllRelationsVisible] = useState(false)
+  const [allRelationsVisible, setAllRelationsVisible] = useState(true)
   const [relationFocusNodeId, setRelationFocusNodeId] = useState<NodeId | null>(null)
 
   const isRelationNode = (id: string) =>
@@ -795,8 +858,7 @@ function StructureMap() {
     id === "voucher-daily-sheet" ||
     id === "voucher-journal" ||
     id === "bs-inventory" ||
-    id === "bs-notes" ||
-    id === "pl-notes"
+    id === "bs-notes"
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -811,12 +873,12 @@ function StructureMap() {
   const relationNodeMap: Partial<Record<NodeId, NodeId[]>> = {
     voucher: ["daily-sheet", "journal", "cashbook"],
     bs: ["inventory", "notes"],
-    pl: ["notes"],
+    pl: ["inventory", "notes"],
   }
   const relationEdgeMap: Partial<Record<NodeId, string[]>> = {
     voucher: ["voucher-cashbook", "voucher-daily-sheet", "voucher-journal"],
     bs: ["bs-inventory", "bs-notes"],
-    pl: ["pl-notes"],
+    pl: ["bs-inventory", "bs-notes"],
   }
 
   useEffect(() => {
@@ -829,7 +891,7 @@ function StructureMap() {
     )
     const visibleRelationEdges = new Set<string>(
       allRelationsVisible
-        ? ["voucher-cashbook", "voucher-daily-sheet", "voucher-journal", "bs-inventory", "bs-notes", "pl-notes"]
+        ? ["voucher-cashbook", "voucher-daily-sheet", "voucher-journal", "bs-inventory", "bs-notes"]
         : relationFocusNodeId
           ? (relationEdgeMap[relationFocusNodeId] ?? [])
           : [],
@@ -862,7 +924,7 @@ function StructureMap() {
   const visibleEdges = useMemo(
     () => {
       const relationEdges = allRelationsVisible
-        ? ["voucher-cashbook", "voucher-daily-sheet", "voucher-journal", "bs-inventory", "bs-notes", "pl-notes"]
+        ? ["voucher-cashbook", "voucher-daily-sheet", "voucher-journal", "bs-inventory", "bs-notes"]
         : relationFocusNodeId
           ? (relationEdgeMap[relationFocusNodeId] ?? [])
           : []
@@ -874,9 +936,17 @@ function StructureMap() {
 
   const relatedIds = useMemo(() => {
     if (!hoveredId) return null
-    const upstream = collectUpstream(hoveredId, visibleEdges)
-    const downstream = collectDownstream(hoveredId, visibleEdges)
-    return new Set<NodeId>([...Array.from(upstream), ...Array.from(downstream)])
+    const traversalStart: NodeId = hoveredId === "pl" ? "bs" : hoveredId
+    const upstream = collectUpstream(traversalStart, visibleEdges)
+    const downstream = collectDownstream(traversalStart, visibleEdges)
+    const merged = new Set<NodeId>([...Array.from(upstream), ...Array.from(downstream)])
+    merged.add(hoveredId)
+    const keepBsPlPaired = hoveredId !== "inventory"
+    if (keepBsPlPaired) {
+      if (merged.has("bs")) merged.add("pl")
+      if (merged.has("pl")) merged.add("bs")
+    }
+    return merged
   }, [hoveredId, visibleEdges])
 
   const selectedNode =
@@ -892,7 +962,7 @@ function StructureMap() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <h1 className="text-[18px] font-bold text-[#1f3f66]">会計構造理解ツール v0</h1>
-              <p className="mt-1 text-[12px] text-[#5f7693]">会計は一本のデータフローであり、試算表から決算帳票へ分岐します。</p>
+              <p className="mt-1 text-[12px] text-[#5f7693]">入力 → 集計 → 表示 の3層で、帳票の役割を段階的に整理しています。</p>
             </div>
             <button
               type="button"
@@ -913,8 +983,33 @@ function StructureMap() {
           </div>
 
           <div className="mt-4 overflow-x-auto overflow-y-hidden">
-            <div className="relative h-[640px] w-[1550px] rounded-lg border border-[#d2deec] bg-[#fbfdff]">
-              <svg className="absolute inset-0 h-full w-full" viewBox="0 0 1550 640" preserveAspectRatio="none">
+            <div className="relative h-[720px] w-[1480px] rounded-lg border border-[#d2deec] bg-[#fbfdff]">
+              <div className="absolute inset-0">
+                {LAYERS.map((layer) => (
+                  <div
+                    key={layer.id}
+                    className="absolute left-3 right-3 rounded-md border border-[#d9e3f1] bg-white/80 px-4 pt-3"
+                    style={{ top: `${layer.y}px`, height: `${layer.h}px` }}
+                  >
+                    <div className="text-[14px] font-bold text-[#2a537f]">{layer.title}</div>
+                    <div className="mt-1 text-[11px] text-[#6a819f]">{layer.subtitle}</div>
+                  </div>
+                ))}
+              </div>
+
+              {STATEMENT_GROUP_FRAME && (
+                <div
+                  className="pointer-events-none absolute rounded-lg border border-dashed border-[#a8b9d1] bg-white/45"
+                  style={{
+                    left: `${STATEMENT_GROUP_FRAME.x}px`,
+                    top: `${STATEMENT_GROUP_FRAME.y}px`,
+                    width: `${STATEMENT_GROUP_FRAME.w}px`,
+                    height: `${STATEMENT_GROUP_FRAME.h}px`,
+                  }}
+                />
+              )}
+
+              <svg className="absolute inset-0 h-full w-full" viewBox="0 0 1480 720" preserveAspectRatio="none">
                 {visibleEdges.map((edge) => {
                   const from = visibleNodes.find((n) => n.id === edge.from)!
                   const to = visibleNodes.find((n) => n.id === edge.to)!
@@ -953,6 +1048,7 @@ function StructureMap() {
                       } else if (id === "notes") {
                         setRelationFocusNodeId("bs")
                       }
+                      setSelectedTarget({ type: "node", id })
                     }
                   }}
                   onOpenDetail={(id) => setSelectedTarget({ type: "node", id })}
